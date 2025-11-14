@@ -28,9 +28,6 @@
 # Make sure calls to this script get redirected to systemctl when
 # using systemd
 
-# some system may not support bridge type by default
-modprobe bridge
-
 . /lib/lsb/init-functions
 
 if [ -f /etc/default/cuttlefish-host-resources ]; then
