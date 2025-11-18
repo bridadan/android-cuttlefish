@@ -120,7 +120,7 @@ Result<std::string> SystemWideUserHome() {
 
 Result<std::string> CurrentUserName() {
   struct passwd* pwd = getpwuid(getuid());
-  CF_EXPECT(pwd, "Failed to get username");
+  CF_EXPECT(pwd != NULL, "Failed to get username");
   return pwd->pw_name;
 }
 
