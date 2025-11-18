@@ -119,9 +119,9 @@ Result<std::string> SystemWideUserHome() {
 }
 
 Result<std::string> CurrentUserName() {
-  char buf[LOGIN_NAME_MAX + 1];
-  CF_EXPECT(getlogin_r(buf, sizeof(buf)) == 0, strerror(errno));
-  return std::string(buf);
+  struct passwd* pwd = getpwuid(getuid());
+  CF_EXPECT(pwd, "Failed to get username");
+  return pwd->pw_name;
 }
 
 } // namespace cuttlefish
