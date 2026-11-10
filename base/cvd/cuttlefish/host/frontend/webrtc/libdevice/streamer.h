@@ -21,14 +21,13 @@
 #include <utility>
 #include <vector>
 
-#include "cuttlefish/host/libs/config/custom_actions.h"
-
 #include "cuttlefish/host/frontend/webrtc/libcommon/audio_source.h"
 #include "cuttlefish/host/frontend/webrtc/libdevice/audio_sink.h"
 #include "cuttlefish/host/frontend/webrtc/libdevice/camera_controller.h"
 #include "cuttlefish/host/frontend/webrtc/libdevice/connection_observer.h"
 #include "cuttlefish/host/frontend/webrtc/libdevice/recording_manager.h"
 #include "cuttlefish/host/frontend/webrtc/libdevice/video_sink.h"
+#include "cuttlefish/host/libs/config/custom_actions.h"
 
 namespace cuttlefish {
 namespace webrtc_streaming {
@@ -58,6 +57,8 @@ struct StreamerConfig {
   bool enable_mouse;
   // Whether gamepad is enabled.
   bool enable_gamepad;
+  // Whether the VHAL proxy server is enabled.
+  bool enable_vhal_proxy_server = false;
 };
 
 class OperatorObserver {
@@ -134,4 +135,3 @@ class Streamer {
 
 }  // namespace webrtc_streaming
 }  // namespace cuttlefish
-

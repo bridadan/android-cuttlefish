@@ -64,14 +64,16 @@ class ConnectionObserverImpl : public webrtc_streaming::ConnectionObserver {
       std::weak_ptr<DisplayHandler> display_handler,
       CameraController *camera_controller,
       webrtc_streaming::SensorsHandler &sensors_handler,
-      std::shared_ptr<webrtc_streaming::LightsObserver> lights_observer)
+      std::shared_ptr<webrtc_streaming::LightsObserver> lights_observer,
+      VhalHandler *vhal_handler)
       : input_events_sink_(std::move(input_events_sink)),
         kernel_log_events_handler_(kernel_log_events_handler),
         commands_to_custom_action_servers_(commands_to_custom_action_servers),
         weak_display_handler_(display_handler),
         camera_controller_(camera_controller),
         sensors_handler_(sensors_handler),
-        lights_observer_(lights_observer) {}
+        lights_observer_(lights_observer),
+        vhal_handler_(vhal_handler) {}
   virtual ~ConnectionObserverImpl() {
     auto display_handler = weak_display_handler_.lock();
     if (display_handler) {
@@ -79,6 +81,9 @@ class ConnectionObserverImpl : public webrtc_streaming::ConnectionObserver {
     }
     if (kernel_log_subscription_id_ != -1) {
       kernel_log_events_handler_.Unsubscribe(kernel_log_subscription_id_);
+    }
+    if (vhal_subscription_id_ != -1 && vhal_handler_) {
+      vhal_handler_->Unsubscribe(vhal_subscription_id_);
     }
   }
 
@@ -163,11 +168,16 @@ class ConnectionObserverImpl : public webrtc_streaming::ConnectionObserver {
   void OnControlChannelOpen(
       std::function<bool(const Json::Value)> control_message_sender) override {
     VLOG(1) << "Control Channel open";
+    control_message_sender_ = control_message_sender;
     if (camera_controller_) {
       camera_controller_->SetMessageSender(control_message_sender);
     }
     kernel_log_subscription_id_ =
         kernel_log_events_handler_.AddSubscriber(control_message_sender);
+    if (vhal_handler_) {
+      vhal_subscription_id_ =
+          vhal_handler_->AddSubscriber(control_message_sender);
+    }
   }
 
   Result<void> OnLidStateChange(bool lid_open) override {
@@ -408,6 +418,22 @@ class ConnectionObserverImpl : public webrtc_streaming::ConnectionObserver {
     return {};
   }
 
+  void OnVhalCommandMsg(const Json::Value &msg) override {
+    if (vhal_handler_) {
+      vhal_handler_->HandleMessage(msg);
+      return;
+    }
+    LOG(ERROR) << "VHAL command received but VHAL proxy server is not enabled";
+    if (control_message_sender_) {
+      Json::Value err;
+      err["event"] = "VHAL_HVAC_POWER_STATE";
+      err["enabled"] = false;
+      err["success"] = false;
+      err["error"] = "VHAL proxy server is not enabled";
+      control_message_sender_(err);
+    }
+  }
+
   void OnCameraData(const std::vector<char> &data) override {
     if (camera_controller_) {
       camera_controller_->HandleMessage(data);
@@ -453,19 +479,24 @@ class ConnectionObserverImpl : public webrtc_streaming::ConnectionObserver {
   CameraController *camera_controller_;
   webrtc_streaming::SensorsHandler& sensors_handler_;
   std::shared_ptr<webrtc_streaming::LightsObserver> lights_observer_;
+  VhalHandler *vhal_handler_ = nullptr;
+  std::function<bool(const Json::Value)> control_message_sender_;
   int sensors_subscription_id = -1;
   int lights_subscription_id_ = -1;
+  int vhal_subscription_id_ = -1;
 };
 
 CfConnectionObserverFactory::CfConnectionObserverFactory(
     InputConnector &input_connector,
     KernelLogEventsHandler &kernel_log_events_handler,
     webrtc_streaming::SensorsHandler &sensors_handler,
-    std::shared_ptr<webrtc_streaming::LightsObserver> lights_observer)
+    std::shared_ptr<webrtc_streaming::LightsObserver> lights_observer,
+    VhalHandler *vhal_handler)
     : input_connector_(input_connector),
       kernel_log_events_handler_(kernel_log_events_handler),
       sensors_handler_(sensors_handler),
-      lights_observer_(lights_observer) {}
+      lights_observer_(lights_observer),
+      vhal_handler_(vhal_handler) {}
 
 std::shared_ptr<webrtc_streaming::ConnectionObserver>
 CfConnectionObserverFactory::CreateObserver() {
@@ -473,7 +504,8 @@ CfConnectionObserverFactory::CreateObserver() {
       new ConnectionObserverImpl(
           input_connector_.CreateSink(), kernel_log_events_handler_,
           commands_to_custom_action_servers_, weak_display_handler_,
-          camera_controller_, sensors_handler_, lights_observer_));
+          camera_controller_, sensors_handler_, lights_observer_,
+          vhal_handler_));
 }
 
 void CfConnectionObserverFactory::AddCustomActionServer(

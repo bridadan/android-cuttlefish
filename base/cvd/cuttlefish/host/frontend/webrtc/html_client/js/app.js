@@ -143,6 +143,8 @@ class DeviceControlApp {
   #deviceCount = 0;
   #micActive = false;
   #adbConnected = false;
+  #hvacPowerControl = null;
+  #pendingHvacToggle = null;
 
   #displaySpecPresets = {
     'display-spec-preset-phone': {
@@ -377,6 +379,14 @@ class DeviceControlApp {
     if (this.#deviceConnection.description.gamepad_enabled) {
       // Enable gamepad button conditionally.
       enableGamepadButton(this.#deviceConnection);
+    }
+
+    if (this.#deviceConnection.description.vhal_proxy_server_enabled) {
+      const hvacPowerBtn = document.getElementById('hvac_power_btn');
+      hvacPowerBtn.style.display = '';
+      this.#hvacPowerControl = createToggleControl(
+          hvacPowerBtn, enabled => this.#onHvacPowerToggle(enabled));
+      this.#updateHvacButtonState(false);
     }
 
     enableKeyboardRewriteButton(this.#deviceConnection);
@@ -695,6 +705,12 @@ class DeviceControlApp {
   }
 
   #showWebrtcError() {
+    if (this.#pendingHvacToggle) {
+      const pending = this.#pendingHvacToggle;
+      this.#pendingHvacToggle = null;
+      clearTimeout(pending.timeoutId);
+      pending.resolve(pending.previousState);
+    }
     showError(
         'No connection to the guest device.  Please ensure the WebRTC' +
         'process on the host machine is active.');
@@ -872,6 +888,27 @@ class DeviceControlApp {
     if (message_data.event == 'VIRTUAL_DEVICE_DISPLAY_POWER_MODE_CHANGED') {
       this.#deviceConnection.expectStreamChange();
       this.#updateDisplayVisibility(metadata.display, metadata.mode);
+    }
+    if (message_data.event == 'VHAL_HVAC_POWER_STATE') {
+      const enabled = !!message_data.enabled;
+      const hvacPowerBtn = document.getElementById('hvac_power_btn');
+      if (this.#pendingHvacToggle) {
+        const pending = this.#pendingHvacToggle;
+        this.#pendingHvacToggle = null;
+        clearTimeout(pending.timeoutId);
+        hvacPowerBtn.disabled = false;
+        this.#updateHvacButtonState(enabled);
+        if (message_data.success === false && message_data.error) {
+          showError(message_data.error);
+        }
+        pending.resolve(enabled);
+      } else {
+        if (message_data.success === false && message_data.error) {
+          showError(message_data.error);
+        }
+        this.#hvacPowerControl?.Set(enabled);
+        this.#updateHvacButtonState(enabled);
+      }
     }
   }
 
@@ -1287,6 +1324,44 @@ class DeviceControlApp {
     if (e.type == 'mousedown') {
       adbShell(shell_command);
     }
+  }
+
+  #updateHvacButtonState(enabled) {
+    const hvacPowerBtn = document.getElementById('hvac_power_btn');
+    if (!hvacPowerBtn) {
+      return;
+    }
+    hvacPowerBtn.title = `HVAC Power (${enabled ? 'ON' : 'OFF'})`;
+    hvacPowerBtn.setAttribute('aria-pressed', String(enabled));
+  }
+
+  #onHvacPowerToggle(enabled) {
+    const hvacPowerBtn = document.getElementById('hvac_power_btn');
+    if (this.#pendingHvacToggle) {
+      return Promise.resolve(!enabled);
+    }
+    hvacPowerBtn.disabled = true;
+    return new Promise(resolve => {
+      const timeoutId = setTimeout(() => {
+        if (this.#pendingHvacToggle) {
+          this.#pendingHvacToggle = null;
+          hvacPowerBtn.disabled = false;
+          const fallbackState = !enabled;
+          this.#updateHvacButtonState(fallbackState);
+          showError('Timed out waiting for VHAL HVAC response.');
+          resolve(fallbackState);
+        }
+      }, 10000);
+      this.#pendingHvacToggle = {
+        resolve,
+        timeoutId,
+        previousState: !enabled,
+      };
+      this.#deviceConnection.sendControlMessage(JSON.stringify({
+        command: 'vhal_hvac_power',
+        enabled: enabled,
+      }));
+    });
   }
 }  // DeviceControlApp
 

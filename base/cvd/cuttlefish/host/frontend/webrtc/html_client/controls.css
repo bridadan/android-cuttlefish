@@ -31,6 +31,17 @@ body.light-theme {
   border-radius: 10px;
 }
 
+#hvac_power_btn.toggle-control.toggle-off:enabled {
+  background-color: var(--button-bg);
+  color: var(--button-fg);
+}
+
+#hvac_power_btn.toggle-control.toggle-on:enabled {
+  background-color: var(--custom-button-bg);
+  color: var(--button-fg);
+  border-radius: 10px;
+}
+
 button:disabled {
   opacity: 0.5;
   cursor: not-allowed;

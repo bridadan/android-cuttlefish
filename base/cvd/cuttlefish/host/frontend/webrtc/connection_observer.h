@@ -26,6 +26,7 @@
 #include "cuttlefish/host/frontend/webrtc/libdevice/connection_observer.h"
 #include "cuttlefish/host/frontend/webrtc/libdevice/lights_observer.h"
 #include "cuttlefish/host/frontend/webrtc/sensors_handler.h"
+#include "cuttlefish/host/frontend/webrtc/vhal_handler.h"
 #include "cuttlefish/host/libs/input_connector/input_connector.h"
 
 namespace cuttlefish {
@@ -37,7 +38,8 @@ class CfConnectionObserverFactory
       InputConnector& input_connector,
       KernelLogEventsHandler& kernel_log_events_handler,
       webrtc_streaming::SensorsHandler& sensors_handler,
-      std::shared_ptr<webrtc_streaming::LightsObserver> lights_observer);
+      std::shared_ptr<webrtc_streaming::LightsObserver> lights_observer,
+      VhalHandler* vhal_handler = nullptr);
   ~CfConnectionObserverFactory() override = default;
 
   std::shared_ptr<webrtc_streaming::ConnectionObserver> CreateObserver()
@@ -59,6 +61,7 @@ class CfConnectionObserverFactory
   cuttlefish::CameraController* camera_controller_ = nullptr;
   webrtc_streaming::SensorsHandler& sensors_handler_;
   std::shared_ptr<webrtc_streaming::LightsObserver> lights_observer_;
+  VhalHandler* vhal_handler_ = nullptr;
 };
 
 }  // namespace cuttlefish

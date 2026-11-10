@@ -227,6 +227,9 @@ class ControlChannelHandler : public DataChannelHandler {
     } else if (command == "remove-display") {
       observer()->OnDisplayRemoveMsg(evt);
       return {};
+    } else if (command == "vhal_hvac_power") {
+      observer()->OnVhalCommandMsg(evt);
+      return {};
     }
 
     auto button_state =

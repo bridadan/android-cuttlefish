@@ -66,6 +66,7 @@ std::string TestPubKeyRsa4096();
 std::string TombstoneReceiverBinary();
 std::string UnpackBootimgBinary();
 std::string VhalProxyServerBinary();
+std::string VhalProxyServerCmdBinary();
 std::string VhalProxyServerConfig();
 std::string VhostUserInputBinary();
 std::string VhostUserMediaEmulatedCameraMPlaneBinary();

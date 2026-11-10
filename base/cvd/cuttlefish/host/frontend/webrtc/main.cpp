@@ -45,6 +45,7 @@
 #include "cuttlefish/host/frontend/webrtc/libdevice/video_sink.h"
 #include "cuttlefish/host/frontend/webrtc/screenshot_handler.h"
 #include "cuttlefish/host/frontend/webrtc/tuner_audio_source.h"
+#include "cuttlefish/host/frontend/webrtc/vhal_handler.h"
 #include "cuttlefish/host/frontend/webrtc/webrtc_command_channel.h"
 #include "cuttlefish/host/frontend/webrtc/webrtc_commands.pb.h"
 #include "cuttlefish/host/libs/audio/channel_layout.h"
@@ -458,6 +459,8 @@ int CuttlefishMain() {
   streamer_config.operator_path = cvd_config->sig_server_address();
   streamer_config.enable_mouse = instance.enable_mouse();
   streamer_config.enable_gamepad = instance.enable_gamepad();
+  streamer_config.enable_vhal_proxy_server =
+      instance.enable_vhal_proxy_server();
 
   KernelLogEventsHandler kernel_logs_event_handler(kernel_log_events_client);
 
@@ -471,9 +474,15 @@ int CuttlefishMain() {
 
   webrtc_streaming::SensorsHandler sensors_handler(sensors_fd);
 
+  std::unique_ptr<VhalHandler> vhal_handler;
+  if (instance.enable_vhal_proxy_server()) {
+    vhal_handler =
+        std::make_unique<VhalHandler>(instance.vhal_proxy_server_port());
+  }
+
   auto observer_factory = std::make_shared<CfConnectionObserverFactory>(
       *input_connector, kernel_logs_event_handler, sensors_handler,
-      lights_observer);
+      lights_observer, vhal_handler.get());
 
   RecordingManager recording_manager;
 

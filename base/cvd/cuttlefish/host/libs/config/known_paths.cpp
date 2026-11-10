@@ -195,6 +195,10 @@ std::string VhalProxyServerBinary() {
   return HostBinaryPath("vhal_proxy_server");
 }
 
+std::string VhalProxyServerCmdBinary() {
+  return HostBinaryPath("vhal_proxy_server_cmd");
+}
+
 std::string VhalProxyServerConfig() {
   return DefaultHostArtifactsPath("etc/automotive/vhalconfig");
 }
